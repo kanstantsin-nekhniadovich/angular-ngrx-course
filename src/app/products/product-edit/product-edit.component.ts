@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
-import { Subscription } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { Product } from '../product';
 import { ProductService } from '../product.service';
@@ -9,8 +9,9 @@ import { GenericValidator } from '../../shared/generic-validator';
 import { NumberValidators } from '../../shared/number.validator';
 
 import { Store, select } from '@ngrx/store';
-import { IAppState, getCurrentProduct } from '../state/products.reducer';
+import { IAppState, getCurrentProduct, getError } from '../state/products.reducer';
 import * as ProductActions from '../state/product.actions';
+import { takeWhile } from 'rxjs/operators';
 
 @Component({
   selector: 'pm-product-edit',
@@ -19,8 +20,9 @@ import * as ProductActions from '../state/product.actions';
 })
 export class ProductEditComponent implements OnInit, OnDestroy {
   pageTitle = 'Product Edit';
-  errorMessage = '';
+  errorMessage$: Observable<string>;
   productForm: FormGroup;
+  componentActive: boolean = true;
 
   product: Product | null;
 
@@ -66,9 +68,13 @@ export class ProductEditComponent implements OnInit, OnDestroy {
     });
 
     // Watch for changes to the currently selected product
-    this.store.pipe(select(getCurrentProduct)).subscribe(
+    this.store.pipe(select(getCurrentProduct),
+      takeWhile(() => this.componentActive)
+    ).subscribe(
       currentProduct => this.displayProduct(currentProduct)
     );
+
+    this.errorMessage$ = this.store.pipe(select(getError));
 
     // Watch for value changes
     this.productForm.valueChanges.subscribe(
@@ -77,7 +83,7 @@ export class ProductEditComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-
+    this.componentActive = false;
   }
 
   // Also validate on blur
@@ -120,10 +126,7 @@ export class ProductEditComponent implements OnInit, OnDestroy {
   deleteProduct(): void {
     if (this.product && this.product.id) {
       if (confirm(`Really delete the product: ${this.product.productName}?`)) {
-        this.productService.deleteProduct(this.product.id).subscribe(
-          () => this.store.dispatch(new ProductActions.ClearCurrentProduct()),
-          (err: any) => this.errorMessage = err.error
-        );
+        this.store.dispatch(new ProductActions.DeleteProduct(this.product.id));
       }
     } else {
       // No need to delete, it was never saved
@@ -140,19 +143,13 @@ export class ProductEditComponent implements OnInit, OnDestroy {
         const p = { ...this.product, ...this.productForm.value };
 
         if (p.id === 0) {
-          this.productService.createProduct(p).subscribe(
-            product => this.store.dispatch(new ProductActions.SetCurrentProduct(product)),
-            (err: any) => this.errorMessage = err.error
-          );
+          this.store.dispatch(new ProductActions.CreateProduct(p));
         } else {
-          this.productService.updateProduct(p).subscribe(
-            product => this.store.dispatch(new ProductActions.SetCurrentProduct(product)),
-            (err: any) => this.errorMessage = err.error
-          );
+          this.store.dispatch(new ProductActions.UpdateProduct(p));
         }
       }
     } else {
-      this.errorMessage = 'Please correct the validation errors.';
+      // this.errorMessage = 'Please correct the validation errors.';
     }
   }
 

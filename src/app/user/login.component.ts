@@ -1,20 +1,24 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { NgForm } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router } from '@angular/router';
 
 import { AuthService } from './auth.service';
 import { IAppState } from '../state/app.state';
+
 import { getMaskUserName } from './state/user.reducer';
+import { MaskUserName } from './state/user.actions';
 
 import { Store, select } from '@ngrx/store';
+import { takeWhile } from 'rxjs/operators';
 
 @Component({
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, OnDestroy {
   pageTitle = 'Log In';
   errorMessage: string;
+  componentActive: boolean = true;
 
   maskUserName: boolean;
 
@@ -24,7 +28,9 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.store.pipe(select(getMaskUserName)).subscribe(
+    this.store.pipe(select(getMaskUserName),
+      takeWhile(() => this.componentActive)
+    ).subscribe(
       maskUserName => this.maskUserName = maskUserName
     );
   }
@@ -34,10 +40,7 @@ export class LoginComponent implements OnInit {
   }
 
   checkChanged(value: boolean): void {
-    this.store.dispatch({
-      type: 'MASK_USER_NAME',
-      payload: value
-    });
+    this.store.dispatch(new MaskUserName(value));
   }
 
   login(loginForm: NgForm): void {
@@ -54,5 +57,9 @@ export class LoginComponent implements OnInit {
     } else {
       this.errorMessage = 'Please enter a user name and password.';
     }
+  }
+
+  ngOnDestroy() {
+    this.componentActive = false;
   }
 }

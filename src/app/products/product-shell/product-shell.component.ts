@@ -7,6 +7,6 @@ export class ProductShellComponent implements OnInit {
 
     constructor() { }
 
-  ngOnInit() {
-  }
+    ngOnInit() {
+    }
 }

@@ -11,12 +11,14 @@ export interface IProductState {
   showProductCode: boolean;
   currentProduct: Product;
   products: Product[];
+  error: string;
 }
 
 const initialState: IProductState = {
   showProductCode: true,
   currentProduct: null,
-  products: []
+  products: [],
+  error: ''
 }
 
 const getFeauterProductState = createFeatureSelector<IProductState>('products');
@@ -34,6 +36,11 @@ export const getCurrentProduct = createSelector(
 export const getProducts = createSelector(
   getFeauterProductState,
   state => state.products
+)
+
+export const getError = createSelector(
+  getFeauterProductState,
+  state => state.error
 )
 
 export function reducer(state = initialState, action: ProductActions): IProductState {
@@ -63,6 +70,62 @@ export function reducer(state = initialState, action: ProductActions): IProductS
           description: '',
           starRating: 0
         }
+      }
+    case ProductActionTypes.LoadSuccess:
+      return {
+        ...state,
+        products: action.payload,
+        error: ''
+      }
+    case ProductActionTypes.LoadFail:
+      return {
+        ...state,
+        products: [],
+        error: action.payload
+      }
+    case ProductActionTypes.CreateProductSuccess:
+      var products = state.products.slice(0);
+      products.push(action.payload);
+
+      return {
+        ...state,
+        currentProduct: action.payload,
+        products: products
+      }
+    case ProductActionTypes.CreateProductFail:
+      return {
+        ...state,
+        error: action.payload
+      }
+    case ProductActionTypes.UpdateProductSuccess:
+      var products = state.products.slice(0);
+      var index = products.findIndex((product) => product.id === action.payload.id);
+      if (index > -1) {
+        products[index] = action.payload;
+      }
+
+      return {
+        ...state,
+        currentProduct: action.payload,
+        products: products
+      }
+    case ProductActionTypes.UpdateProductFail:
+      return {
+        ...state,
+        error: action.payload
+      }
+    case ProductActionTypes.DeleteProductFail:
+      return {
+        ...state,
+        error: action.payload
+      }
+    case ProductActionTypes.DeleteProductSuccess:
+      var products = state.products.filter((product: Product) => product.id !== action.payload);
+
+      return {
+        ...state,
+        currentProduct: null,
+        products: products
       }
     default:
       return state;
